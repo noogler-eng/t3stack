@@ -1,9 +1,12 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import GitHubProvider from "next-auth/providers/github";
 import prisma from "@/app/db/prisma";
 import bcrypt from "bcrypt";
 
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET)
+  throw new Error("Unable to Fetch client id's");
+if (!process.env.GITHUB_ID || !process.env.GITHUB_SECRET)
   throw new Error("Unable to Fetch client id's");
 
 const authConfig = {
@@ -11,6 +14,10 @@ const authConfig = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+    GitHubProvider({
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
     }),
 
     CredentialsProvider({
@@ -27,7 +34,6 @@ const authConfig = {
       },
       async authorize(credentials, req) {
         try {
-          console.log("calling1");
           const exisitingUser = await prisma.user.findUnique({
             where: {
               email: credentials?.email,
@@ -40,7 +46,6 @@ const authConfig = {
               exisitingUser?.password || ""
             );
             if (!isPasswordCorrect) return null;
-            console.log("existing user: ", exisitingUser);
             return exisitingUser;
           } else {
             const user = await prisma.user.create({
@@ -71,15 +76,15 @@ const authConfig = {
           },
         });
 
-        if(exisitingUser?.email) return true;
-      
+        if (exisitingUser?.email) return true;
+
         console.log(user);
         await prisma.user.create({
           data: {
             username: user.name,
             imageUrl: user.image,
             email: user.email,
-            provider: user.type || "GOOGlE",
+            provider: account.provider == 'github' ? "GITHUB" :"GOOGLE",
           },
         });
         return true;
